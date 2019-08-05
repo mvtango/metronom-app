@@ -122,7 +122,7 @@ update msg model =
 
 
         UpdateMode newmode -> case newmode of
-                  Looping   -> ({ model | mode = newmode, loop = (if model.mode == Recording then model.tick else model.loop) }, Cmd.none)
+                  Looping   -> ({ model | mode = newmode, loop = (if model.mode == Recording then model.tick else model.loop), tick = 0 }, Cmd.none)
                   Stopped   -> ({ model |   mode = newmode
                                           , todos = (if model.mode == Recording then 
                                                         addPause model.todos model.tick 
@@ -130,6 +130,7 @@ update msg model =
                                                         model.todos
                                                     )
                                           , loop = (if model.tick > model.loop then model.tick else model.loop) 
+                                          , tick = -1
                                 }, Cmd.none)
                   Recording -> ({ model | mode = newmode, tick = model.loop }, Cmd.none)
 
@@ -142,14 +143,22 @@ update msg model =
 viewButton : Mode -> Bool -> Html Msg
 viewButton mode off =
     case mode of
-        Recording -> button [ onClick (UpdateMode mode), class "button is-primary", disabled off ] 
-                            [ text "Record" ]
-        Stopped   -> button [ onClick (UpdateMode mode), class "button is-primary", disabled off ] 
-                            [ text "Stop" ]
+        Recording -> button [ onClick (UpdateMode mode), class "button is-primary", disabled off ] [
+                               span [ class "icon" ] 
+                                  [
+                                    Html.i [ class "fas fa-plus" ] []
+                                  ]
+                            ]
+        Stopped   -> button [ onClick (UpdateMode mode), class "button is-primary", disabled off ] [
+                               span [ class "icon" ] 
+                                  [
+                                    Html.i [ class "fas fa-stop" ] []
+                                  ]
+                            ]
         Looping   -> button [ onClick (UpdateMode mode), class "button is-primary", disabled off ] [
                                span [ class "icon" ] 
                                   [
-                                    Html.i [ class "fas fa-undo" ] []
+                                    Html.i [ class "fas fa-play" ] []
                                   ]
                             ]
 
@@ -161,22 +170,22 @@ viewToolbar model =
         case model.mode of
           Stopped ->
                      span [] [
-                          viewButton Recording False
-                        , viewButton Looping False
+                          viewButton Looping False
                         , viewButton Stopped True
+                        , viewButton Recording False
                     ]
           Looping ->
                      span [] [
-                          viewButton Recording True
-                        , viewButton Looping True
+                          viewButton Looping True
                         , viewButton Stopped False
+                        , viewButton Recording True
                     ]
           Recording ->
                      span [] [
-                          viewButton Recording True
-                        , viewButton Looping True
+                          viewButton Looping True
                         , viewButton Stopped False
-                    ]
+                        , viewButton Recording True
+                     ]
         ]
 
 viewHeader: Model -> Html Msg
