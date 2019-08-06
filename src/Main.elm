@@ -203,7 +203,7 @@ viewToolbar model =
                 button [ onClick (ResetTodos), class "button is-primary", disabled (model.mode /= Stopped) ] [
                                span [ class "icon" ] 
                                   [
-                                    Html.i [ class "fas fa-undo" ] []
+                                    Html.i [ class "fas fa-trash" ] []
                                   ]
                             ]
     in 
@@ -213,7 +213,7 @@ viewToolbar model =
           Stopped ->
                      span [] [
                           resetButton
-                        , viewButton Looping False
+                        , viewButton Looping ((List.length model.todos) < 2)
                         , viewButton Stopped True
                         , viewButton Recording False
                     ]
