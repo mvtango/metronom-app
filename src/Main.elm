@@ -1,7 +1,7 @@
 port module Main exposing (..)
 
 import Browser
-
+import Platform.Cmd
 import Html
 import Html exposing (Html, a, button, br, text, section, div, span, h1, h2, img, input, p )
 import Html.Attributes exposing (autofocus, checked, class, placeholder, style, type_, value, readonly, disabled )
@@ -19,6 +19,8 @@ type Msg
     | AddTodo Action
     | RemoveTodo Int
     | Tick Time.Posix
+    | SetTick Int
+    | ResetTodos
     | Noop
 
 
@@ -53,10 +55,10 @@ type alias Model =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( Model [ ]
+    ( Model [ Todo Pause 0 1 ]
             Stopped 
-            0 
-            50 
+            -1 
+            2 
             False
     , Cmd.none
     )
@@ -81,7 +83,31 @@ addPause todos tick =
                        else
                          todos ++ [ newTodo ]
 
+findSound: Action -> Cmd Msg
+findSound action =  case action of 
+        In -> playSample "in"
+        Out -> playSample "out"
+        Strike -> playSample "strike" -- playSample "strike"
+        Pause -> Cmd.none
 
+findCurrentSound: Model -> Cmd Msg
+findCurrentSound model =
+    let
+        this = List.filter (\t -> t.tick == model.tick) model.todos
+               |> List.head
+    in
+        case this of
+            Nothing -> Cmd.none
+            Just a -> findSound a.action
+
+todosLength: List Todo -> Int
+todosLength todos =
+    let
+        last = List.head (List.reverse todos)
+    in
+        case last of
+            Nothing -> 2
+            Just a -> a.tickEnd
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -96,7 +122,7 @@ update msg model =
                     if action == In then True else if action == Out then False else model.inside 
             in
             ( { model | todos = newTodos, inside = newInside, tick = model.tick + 3 }
-             , saveTodos newTodos
+             , Platform.Cmd.batch [saveTodos newTodos, findSound action]
             )
 
         RemoveTodo index ->
@@ -117,12 +143,19 @@ update msg model =
         Tick time -> ( case model.mode of
                        Stopped   -> (model, Cmd.none)
                        Recording -> ({ model | tick = model.tick +1 }, Cmd.none )
-                       Looping   -> ({ model | tick = remainderBy model.loop (model.tick + 1) }, Cmd.none)
+                       Looping   -> ({ model | tick = remainderBy model.loop (model.tick + 1) }, findCurrentSound model)
                      )
 
+        SetTick pos -> ({ model | tick = pos - 1, mode = Looping }, Cmd.none)
+
+        ResetTodos  -> (Model [ Todo Pause 0 1 ]
+                            Stopped 
+                            -1 
+                            2 
+                            False, Cmd.none)
 
         UpdateMode newmode -> case newmode of
-                  Looping   -> ({ model | mode = newmode, loop = (if model.mode == Recording then model.tick else model.loop), tick = 0 }, Cmd.none)
+                  Looping   -> ({ model | mode = newmode, loop = todosLength model.todos, tick = 0 }, Cmd.none)
                   Stopped   -> ({ model |   mode = newmode
                                           , todos = (if model.mode == Recording then 
                                                         addPause model.todos model.tick 
@@ -165,24 +198,36 @@ viewButton mode off =
 
 viewToolbar : Model -> Html Msg
 viewToolbar model =
+    let 
+        resetButton = 
+                button [ onClick (ResetTodos), class "button is-primary", disabled (model.mode /= Stopped) ] [
+                               span [ class "icon" ] 
+                                  [
+                                    Html.i [ class "fas fa-undo" ] []
+                                  ]
+                            ]
+    in 
     div [ ]
         [
         case model.mode of
           Stopped ->
                      span [] [
-                          viewButton Looping False
+                          resetButton
+                        , viewButton Looping False
                         , viewButton Stopped True
                         , viewButton Recording False
                     ]
           Looping ->
                      span [] [
-                          viewButton Looping True
+                          resetButton
+                        , viewButton Looping True
                         , viewButton Stopped False
                         , viewButton Recording True
                     ]
           Recording ->
                      span [] [
-                          viewButton Looping True
+                          resetButton
+                        , viewButton Looping True
                         , viewButton Stopped False
                         , viewButton Recording True
                      ]
@@ -198,20 +243,25 @@ viewHeader model =
                 , div [ class "level-item"] 
                 [
                  viewToolbar model
-                ]
-                , div [ class "level-item" ] [
-                 div [    class ""
-                       , style "visibility" (if model.mode == Recording then "visible" else "hidden") 
+                 , br [] []
+                 , div [    class ""
+                       , style "opacity" (if model.mode == Recording then "1" else "0") 
                      ] 
                   [
-                         viewAction Strike True
-                       , (if model.inside then viewAction Out True else text "")
-                       , (if not model.inside then viewAction In True else text "")
+                         viewAction Strike Nothing
+                       , (if model.inside then viewAction Out Nothing else text "")
+                       , (if not model.inside then viewAction In Nothing else text "")
 
                   ]
                 ]
-            ]
-            ,div [ class "level-right"] [
+                , div [ class "level-item" ]
+                [
+                 div [ class "box", style "line-height" "2.1em", style "text-align" "left" ] 
+                     (List.map (viewTodo model.tick) (if model.mode == Recording 
+                                                      then addPause model.todos model.tick 
+                                                      else model.todos))
+
+                ]
             ]
         ]
 
@@ -242,10 +292,12 @@ getCurrent model =
        List.head current
 
 
-viewAction: Action -> Bool -> Html Msg
-viewAction action create =
+viewAction: Action -> Maybe Int -> Html Msg
+viewAction action pos =
     let
-        clickaction = onClick (if create then AddTodo action else Noop)
+        clickaction = onClick (case pos of 
+                               Nothing -> AddTodo action 
+                               Just i -> SetTick i)
     in
         case action of
         Strike ->
@@ -280,12 +332,8 @@ view model =
     let 
         current = getCurrent model
     in
-    div [ class "section", style "max-width" "50%", style "margin-left" "25%" ] [
+    div [ class "section" ] [
           viewHeader model 
-          ,div [ class "box", style "line-height" "2.1em", style "text-align" "left"] 
-                 (List.map (viewTodo model.tick) (if model.mode == Recording 
-                                                  then addPause model.todos model.tick 
-                                                  else model.todos))
 
         ]
                  
@@ -302,10 +350,17 @@ viewTodo tick todo =
                          In -> " action-in"
                          Out -> " action-out"
                          Strike -> " action-strike"
+            ping   = if (tick == todo.tick) then 
+                        case todo.action of
+                            Strike -> playSample "strike"
+                            In     -> playSample "in"
+                            Out    -> playSample "out"
+                            Pause  -> Cmd.none
+                     else Cmd.none
         in 
                 span [ class (pclass ++ aclass) ]
                     [ 
-                           viewAction todo.action False
+                           viewAction todo.action (Just todo.tick)
                     ]
 
 
@@ -317,11 +372,12 @@ saveTodos : List Todo -> Cmd msg
 saveTodos list =
     Cmd.none
 
+port playSample: String -> Cmd msg
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 100 Tick
+    Time.every 20 Tick
 
 
 
