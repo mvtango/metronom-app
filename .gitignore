@@ -1,5 +1,7 @@
 # Distribution
 build/
+build-remote/
+samples/
 
 # elm-package generated files
 elm-stuff
