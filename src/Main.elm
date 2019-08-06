@@ -176,19 +176,19 @@ update msg model =
 viewButton : Mode -> Bool -> Html Msg
 viewButton mode off =
     case mode of
-        Recording -> button [ onClick (UpdateMode mode), class "button is-primary", disabled off ] [
+        Recording -> button [ onClick (UpdateMode mode), class "button is-large is-primary", disabled off ] [
                                span [ class "icon" ] 
                                   [
                                     Html.i [ class "fas fa-plus" ] []
                                   ]
                             ]
-        Stopped   -> button [ onClick (UpdateMode mode), class "button is-primary", disabled off ] [
+        Stopped   -> button [ onClick (UpdateMode mode), class "button is-large is-primary", disabled off ] [
                                span [ class "icon" ] 
                                   [
                                     Html.i [ class "fas fa-stop" ] []
                                   ]
                             ]
-        Looping   -> button [ onClick (UpdateMode mode), class "button is-primary", disabled off ] [
+        Looping   -> button [ onClick (UpdateMode mode), class "button is-large is-primary", disabled off ] [
                                span [ class "icon" ] 
                                   [
                                     Html.i [ class "fas fa-play" ] []
@@ -200,7 +200,7 @@ viewToolbar : Model -> Html Msg
 viewToolbar model =
     let 
         resetButton = 
-                button [ onClick (ResetTodos), class "button is-primary", disabled (model.mode /= Stopped) ] [
+                button [ onClick (ResetTodos), class "button is-large is-primary", disabled (model.mode /= Stopped) ] [
                                span [ class "icon" ] 
                                   [
                                     Html.i [ class "fas fa-trash" ] []
@@ -254,9 +254,9 @@ viewHeader model =
 
                   ]
                 ]
-                , div [ class "level-item" ]
+                , div [ class "level-item", style "max-width" "800px" ]
                 [
-                 div [ class "box", style "line-height" "2.1em", style "text-align" "left" ] 
+                 div [ class "box", style "line-height" "3.1em", style "text-align" "left" ] 
                      (List.map (viewTodo model.tick) (if model.mode == Recording 
                                                       then addPause model.todos model.tick 
                                                       else model.todos))
@@ -301,21 +301,21 @@ viewAction action pos =
     in
         case action of
         Strike ->
-            button [ class "button is-small is-danger align-baseline", clickaction ] [
+            button [ class "button is-large is-danger align-baseline", clickaction ] [
                    span [ class "icon" ]
                       [
                         Html.i [ class "fas fa-slash" ] []
                       ]
             ]
         Out -> 
-            button [ class "button is-small is-white align-baseline", clickaction ] [
+            button [ class "button is-large is-white align-baseline", clickaction ] [
                    span [ class "icon" ]
                       [
                         Html.i [ class "fas fa-sign-out-alt" ] []
                       ]
             ]
         In -> 
-            button [ class "button is-small is-black align-baseline", clickaction ] [
+            button [ class "button is-large is-black align-baseline", clickaction ] [
                    span [ class "icon" ]
                       [
                         Html.i [ class "fas fa-sign-in-alt" ] []
