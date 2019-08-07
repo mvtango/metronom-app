@@ -146,7 +146,11 @@ update msg model =
                        Looping   -> ({ model | tick = remainderBy model.loop (model.tick + 1) }, findCurrentSound model)
                      )
 
-        SetTick pos -> ({ model | tick = pos - 1, mode = Looping }, Cmd.none)
+        -- SetTick pos -> (({ model | tick = pos - 1}), (update (UpdateMode Looping) model) )
+        SetTick pos -> if (model.mode == Stopped || model.mode == Looping) then 
+                         ({ model | tick = pos - 1, mode = Looping, loop = todosLength model.todos }, Cmd.none )
+                       else
+                         update (UpdateMode Stopped) model
 
         ResetTodos  -> (Model [ Todo Pause 0 1 ]
                             Stopped 
